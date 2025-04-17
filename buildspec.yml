@@ -1,0 +1,100 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_REGION: "eu-west-1"
+    ECR_REPOSITORY: "flag-explorer-backend"
+    FRONTEND_BUCKET: "${FRONTEND_BUCKET}"
+    ECS_CLUSTER: "flag-explorer-cluster"
+    ECS_SERVICE: "flag-explorer-backend-service"
+  exported-variables:
+    - BACKEND_URL
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+      docker: 20
+    commands:
+      - echo Installing dependencies...
+
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws --version
+      - $(aws ecr get-login --no-include-email --region $AWS_REGION)
+      - BACKEND_IMAGE_URI=$(aws sts get-caller-identity --query 'Account' --output text).dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
+      # Replace with your actual backend URL logic which is configured to the ECS
+      - export BACKEND_URL="https://your-deployed-backend-url.com/api"
+      - echo "Backend URL set to $BACKEND_URL"
+
+  build:
+    commands:
+      # Backend build and test
+      - echo "Running backend tests..."
+      - cd backend
+      - npm ci
+      - npm test
+      - cd ..
+
+      # Frontend build and test
+      - echo "Running frontend tests..."
+      - cd frontend
+      - export REACT_APP_API_URL="$BACKEND_URL"
+      - npm ci
+      - npm test
+      - npm run build
+      - cd ..
+
+      # Building the docker image
+      - echo Building backend Docker image...
+      - docker build -t $ECR_REPOSITORY backend/
+      - docker tag $ECR_REPOSITORY:latest $BACKEND_IMAGE_URI
+
+      - echo Building frontend...
+      - cd frontend
+      # Set the environment variable that your React app expects
+      - export REACT_APP_API_URL="$BACKEND_URL"
+      - npm ci
+      - npm run build
+      - cd ..
+
+  post_build:
+    commands:
+      - echo Pushing Docker image to ECR...
+      - docker push $BACKEND_IMAGE_URI
+
+      - echo Deploying frontend to S3...
+      - aws s3 sync frontend/build s3://$FRONTEND_BUCKET --delete
+
+      - echo Writing taskdef.json...
+      - |
+        cat <<EOF > taskdef.json
+        {
+          "family": "flag-explorer-task",
+          "executionRoleArn": "arn:aws:iam::YOUR-AWS-ACCOUNT-ID:role/ecsTaskExecutionRole",
+          "networkMode": "awsvpc",
+          "requiresCompatibilities": ["FARGATE"],
+          "cpu": "256",
+          "memory": "512",
+          "containerDefinitions": [
+            {
+              "name": "flag-explorer-backend",
+              "image": "$BACKEND_IMAGE_URI",
+              "portMappings": [
+                {
+                  "containerPort": 3001,
+                  "hostPort": 3001,
+                  "protocol": "tcp"
+                }
+              ],
+              "essential": true
+            }
+          ]
+        }
+        EOF
+
+artifacts:
+  files:
+    - appspec.yml
+    - taskdef.json
