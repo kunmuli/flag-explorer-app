@@ -79,7 +79,12 @@ To run the frontend and backend applications simultaneously on your local machin
     ```bash
     npm install
     ```
-4.  **Start the frontend development server:**
+4.  **Copy the environment config**
+    ```bash
+    cp .env.example .env
+    ```
+    This sets up the required environment variables needed for the frontend to run correctly.
+5.  **Start the frontend development server:**
     ```bash
     npm start
     ```
