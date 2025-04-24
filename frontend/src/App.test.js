@@ -1,8 +1,10 @@
-import { render, screen } from '@testing-library/react';
-import App from './App';
+import { render, screen } from "@testing-library/react";
+import App from "./App";
+import { BrowserRouter } from "react-router";
 
-test('renders learn react link', () => {
+test("renders the flag explorer heading", () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+
+  const heading = screen.getByText(/2025 Ernest Muli/i);
+  expect(heading).toBeInTheDocument();
 });

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { fetchCountryDetails } from "../api";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link } from "react-router";
 
 const CountryDetail = () => {
   const { name } = useParams();
