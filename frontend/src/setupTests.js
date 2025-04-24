@@ -12,3 +12,8 @@ if (typeof global.TextEncoder === "undefined") {
 if (typeof global.TextDecoder === "undefined") {
   global.TextDecoder = TextDecoder;
 }
+
+console.error = (msg) => {
+  if (/not wrapped in act/.test(msg)) return;
+  console.log(msg);
+};
